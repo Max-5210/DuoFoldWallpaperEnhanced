@@ -5,82 +5,26 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![minSdk](https://img.shields.io/badge/minSdk-33-3DDC84)](https://android-arsenal.com/api?level=33)
 [![Target](https://img.shields.io/badge/Foldable-Ready-purple.svg)](https://developer.android.com/guide/topics/ui/foldables)
-[![Live Showcase](https://img.shields.io/badge/showcase-0°–180°-blue)](https://vyom-2007.github.io/DuoFoldWallpaper/)
 
-![Pixel 10 Pro Fold Live Wallpaper Demo](docs/pixel_fold_hero.png)
-
-An open-source Android live wallpaper that ports the viral **iPhone Duo fold-transition effect** (hinge-anchored ray-plane perspective compression, progressive blur, and cover-display window projection) to Android foldables (Google Pixel Fold / 9 Pro Fold / 10 Pro Fold, Samsung Galaxy Z Fold series, and more).
+An open-source Android live wallpaper that ports the viral **iPhone Duo fold-transition effect** (hinge-anchored ray-plane perspective compression, progressive blur, and cover-display window projection) to Android foldables (Google Pixel Fold, Samsung Galaxy Z Fold series, and more).
 
 Powered by `Sensor.TYPE_HINGE_ANGLE` and a hardware-accelerated **AGSL (Android Graphics Shading Language) `RuntimeShader`**.
 
 ---
 
-## 📸 Real Pixel 10 Pro Fold Emulator Captures
-
-| 0° — Cover Screen Window | 90° — Tabletop Compression & Blur | 180° — Flat Unfolded Landscape |
-|:---:|:---:|:---:|
-| ![0 Degrees Cover Display](docs/screenshots/pixel_0.png) | ![90 Degrees Tabletop Seam](docs/screenshots/pixel_90.png) | ![180 Degrees Flat Display](docs/screenshots/pixel_180.png) |
-| *Outer cover display acts as a "window" anchored at the fold.* | *Left panel recedes with ray-plane warp & 25-tap progressive blur.* | *Seamless, crystal-clear 1:1 wallpaper alignment across both panels.* |
-
----
-
 ## ⚡ Key Engineering Features
-1. **Hardware Hinge-Angle Sensor Integration (`Sensor.TYPE_HINGE_ANGLE`)**
-   - Driven at 120 Hz using Android's native hinge-angle sensor API.
-   - Low-pass smoothing filter eliminates physical sensor jitter without sluggish latency.
-
-2. **Battery-Conscious Choreographer Loop**
-   - Renders only when motion or scheduled lighting transitions are detected! The `Choreographer.FrameCallback` automatically pauses when the hinge settles, preventing battery drain while idling.
-
-3. **2D AGSL Vector-Driven 3D Ray-Plane Projection Shader (`ShaderCode.kt`)**
-   - **Vector-Driven Surface Projection**: Replaces scalar horizontal approximations with full 3D ray-plane intersection math ($\vec{R}(t) = \vec{O} + t\vec{D}$) against dynamically rotated panel surface normals ($\vec{N}$).
-   - **True 3D Perspective & Depth**: Computes exact camera-to-surface ray intersections using panel basis vectors ($\vec{U}, \vec{V}$), delivering authentic foreshortening, angular perspective distortion, and real-time surface normal lighting/shading across the fold crease.
-   - **Original-UV Gradient Mapping**: Maps intersected 3D coordinates directly back into canonical UV space, ensuring the non-folding panel remains 100% sharp and bright without color void artifacts or horizontal streaking.
-
-4. **Dual-Resolution 25-Tap Progressive Blur**
-   - Scaled 5×5 weighted Gaussian kernel with downscaled texture sampling, delivering smooth optical blur matching high-order mip-chain lookups.
-
-5. **Multi-Display Engine Architecture (`DuoWallpaperService.kt`)**
-   - Instantiates an independent `WallpaperService.Engine` per physical display (`Display.DEFAULT_DISPLAY` vs secondary cover display).
-   - Projects an affine crop of the inner canonical image onto the cover screen so the closed phone behaves like a viewport into the unfolded canvas.
-
-6. **Dynamic Hardware Abstraction (`DeviceConfig.kt`)**
-   - Zero hardcoded magic numbers. Display geometry, hinge positions, and perspective ratios are computed dynamically from `DisplayManager` and device specs.
-   - Pre-calibrated profiles for **Pixel 10 Pro Fold**, **Galaxy Z Fold 6**, **Galaxy Z Fold 8**, and generic fallback.
-
-7. **Custom Wallpaper Picker & Built-In Demo Mode**
-   - Pick any image from storage; the app stores it internally and reloads the live shader immediately.
-   - Built-in **Demo Mode** toggles continuous cosine fold cycles for demonstration and screen recordings.
-   - Integrated settings directly in the system live wallpaper previewer via `android:settingsActivity`.
-
-8. **Automatic Sunrise/Sunset Wallpaper Scheduler (`SolarScheduleManager.kt`)**
-   - **Dynamic Solar Calculation**: Computes exact local sunrise and sunset times using device coordinates or manual timezone fallback without requiring continuous background GPS polling.
-   - **Automated Day/Night Wallpaper Swapping**: Uses `AlarmManager` and `WorkManager` to trigger seamless transitions between user-selected Day and Night wallpapers across both the inner and cover displays.
-   - **Shader Crossfade Blending**: Feeds a normalized transition uniform into `ShaderCode.kt` to smoothly dissolve between day and night textures during twilight windows.
----
-
-## ⚖️ Legal Disclaimer
-
-> *Not affiliated with, sponsored by, or endorsed by Apple Inc. or Samsung Electronics Co., Ltd. Contains no proprietary Apple or Samsung assets; all visual effects, math, and shaders are original implementations built from scratch.*
+1. **Hardware Hinge-Angle Sensor (`Sensor.TYPE_HINGE_ANGLE`)**: Driven at 120 Hz with a low-pass smoothing filter to eliminate jitter.
+2. **Battery-Conscious Choreographer Loop**: Renders only during active motion or lighting transitions; pauses automatically when idling.
+3. **2D AGSL 3D Ray-Plane Projection Shader (`ShaderCode.kt`)**: Computes exact camera-to-surface ray intersections for authentic foreshortening and real-time lighting across the crease.
+4. **Dual-Resolution 25-Tap Progressive Blur**: Scaled 5x5 weighted Gaussian kernel with downscaled texture sampling.
+5. **Multi-Display Engine Architecture (`DuoWallpaperService.kt`)**: Independent engines per display supporting outer window projection.
+6. **Dynamic Hardware Abstraction (`DeviceConfig.kt`)**: Dynamic geometry computation with pre-calibrated profiles for Pixel and Galaxy Z Fold devices.
+7. **Automatic Solar Wallpaper Scheduler (`SolarScheduleManager.kt`)**: Location-aware twilight calculations that crossfade between day and night shaders.
 
 ---
 
-## 📱 Hardware & One UI Notes
-
-### Testing Display Engine Allocation
-Android supports multi-display wallpapers, but OEM behavior varies across software updates. To verify whether your system provides a separate wallpaper surface for the cover screen:
-
-```bash
-adb logcat -s DuoWallpaperService
-```
-
-When folding and unfolding, look for:
-```
-D DuoWallpaperService: Engine bound to displayId=0 outer=false
-D DuoWallpaperService: Engine bound to displayId=1 outer=true
-```
-- **If both appear**: Your device supports full dual-screen rendering with the outer window effect.
-- **If only `displayId=0` appears**: The device runs in single-engine mode; the inner display transition runs at full fidelity, while the cover display displays the standard static crop.
+## 🐛 Bug Fixes
+- **Fixed Cover Screen Black Bar**: Resolved an aspect-ratio calculation issue causing unwanted black letterboxing/pillarboxing bars on the outer cover display when folded.
 
 ---
 
@@ -91,13 +35,10 @@ D DuoWallpaperService: Engine bound to displayId=1 outer=true
 - JDK 17
 - Android SDK 35 (Minimum API 33 required for AGSL `RuntimeShader`)
 
-### Pre-Built APK
-Download the latest APK from [Releases](https://github.com/Vyom-2007/DuoFoldWallpaper/releases) and sideload directly to your device.
-
 ### Compile from Source
 ```bash
 # Clone the repository
-git clone https://github.com/Vyom-2007/DuoFoldWallpaper.git
+git clone [https://github.com/Vyom-2007/DuoFoldWallpaper.git](https://github.com/Vyom-2007/DuoFoldWallpaper.git)
 cd DuoFoldWallpaper
 
 # Build debug APK
@@ -105,74 +46,3 @@ cd DuoFoldWallpaper
 
 # Install via ADB
 adb install -r app/build/outputs/apk/debug/app-debug.apk
-```
-
-### Setting the Wallpaper
-1. Launch **Duo Fold Wallpaper** from your app drawer.
-2. Tap **"Choose Image"** to select a wallpaper (or keep the default mountain landscape).
-3. Tap **"Set as Live Wallpaper"** and apply to Home and Lock Screen.
-4. Fold your phone to watch the transition!
-
----
-
-## 🧪 Testing with the Android Emulator
-
-No foldable device? Test using the Android Studio Emulator:
-```bash
-# Set hinge angle to 90° (Tabletop mode)
-adb emu sensor set hinge-angle0 90
-
-# Set hinge angle to 180° (Flat unfolded)
-adb emu sensor set hinge-angle0 180
-
-# Set hinge angle to 0° (Fully closed)
-adb emu sensor set hinge-angle0 0
-```
-
----
-
-## 📂 Repository Structure
-
-```
-DuoFoldWallpaper/
-├── app/
-│   ├── src/main/java/com/example/duofoldwallpaper/
-│   │   ├── DeviceConfig.kt         # Hardware geometry & display detection
-│   │   ├── DuoWallpaperService.kt  # WallpaperService & per-display Engine
-│   │   ├── FoldMath.kt             # Projection math, smoothstep, timing curves
-│   │   ├── MainActivity.kt         # User settings, image picker, demo switch
-│   │   └── ShaderCode.kt           # AGSL 25-tap blur & perspective shader
-│   └── src/main/res/               # Resources, layout, wallpaper metadata
-├── docs/
-│   ├── index.html                  # Interactive 0°–180° GitHub Pages showcase
-│   ├── FOLD_ANGLES_SHOWCASE.md     # 10° step visual breakdown & analysis
-│   ├── SEED_ISSUES.md              # Ready-to-use contributor issues
-│   └── screenshots/                # Showcase captures across all angles
-├── tools/
-│   └── build_showcase.py           # Automated showcase generator script
-├── .github/
-│   ├── workflows/build.yml         # GitHub Actions CI build pipeline
-│   └── ISSUE_TEMPLATE/             # Bug report & feature request templates
-├── CONTRIBUTING.md                 # Contribution guidelines
-├── ROADMAP.md                      # Upcoming features & optimizations
-└── LICENSE                         # MIT License
-```
-
----
-
-## 🤝 Contributing
-
-Contributions are warmly welcome! Whether you want to calibrate device ratios, optimize the AGSL kernel, or add Z Flip clamshell orientation:
-- Check out [`CONTRIBUTING.md`](CONTRIBUTING.md) for guidelines.
-- Pick a starter task from [`docs/SEED_ISSUES.md`](docs/SEED_ISSUES.md).
-- See what's coming up in [`ROADMAP.md`](ROADMAP.md).
-
----
-
-## 🏷️ GitHub Topics
-`android`, `live-wallpaper`, `agsl`, `runtime-shader`, `foldable`, `galaxy-z-fold`, `pixel-fold`, `hinge-angle-sensor`, `jetpack`, `kotlin`
-
----
-
-## 📄 License
-This project is licensed under the [MIT License](LICENSE) © 2026 Dev Vekariya.
