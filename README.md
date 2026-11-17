@@ -9,21 +9,9 @@
 
 ![Pixel 10 Pro Fold Live Wallpaper Demo](docs/pixel_fold_hero.png)
 
-> **"Apple spent 7 years and $1,999 on this fold animation. I put it on Android as an open-source live wallpaper."**
-
 An open-source Android live wallpaper that ports the viral **iPhone Duo fold-transition effect** (hinge-anchored ray-plane perspective compression, progressive blur, and cover-display window projection) to Android foldables (Google Pixel Fold / 9 Pro Fold / 10 Pro Fold, Samsung Galaxy Z Fold series, and more).
 
 Powered by `Sensor.TYPE_HINGE_ANGLE` and a hardware-accelerated **AGSL (Android Graphics Shading Language) `RuntimeShader`**.
-
----
-
-## 🌐 Live In-Browser Angle Showcase
-
-Don't have a foldable nearby? Scrub through the fold transition in your browser with our interactive 0°→180° viewer:
-
-### [👉 Launch Interactive 0° to 180° Angle Showcase](https://vyom-2007.github.io/DuoFoldWallpaper/)
-
-*(Also available locally in [`docs/index.html`](docs/index.html) or [`DuoFold_Showcase.html`](DuoFold_Showcase.html)).*
 
 ---
 
@@ -37,18 +25,17 @@ Don't have a foldable nearby? Scrub through the fold transition in your browser 
 ---
 
 ## ⚡ Key Engineering Features
-
 1. **Hardware Hinge-Angle Sensor Integration (`Sensor.TYPE_HINGE_ANGLE`)**
    - Driven at 120 Hz using Android's native hinge-angle sensor API.
    - Low-pass smoothing filter eliminates physical sensor jitter without sluggish latency.
 
 2. **Battery-Conscious Choreographer Loop**
-   - Renders only when motion is detected! The `Choreographer.FrameCallback` automatically pauses when the hinge settles, preventing battery drain while idling.
+   - Renders only when motion or scheduled lighting transitions are detected! The `Choreographer.FrameCallback` automatically pauses when the hinge settles, preventing battery drain while idling.
 
-3. **2D AGSL Ray-Plane Perspective Shader (`ShaderCode.kt`)**
-   - Calculates dynamic depth foreshortening: $z = d \cdot \sin(\theta)$ and perspective scaling: $S = \frac{E}{E + z}$.
-   - Replicates true 3D edge-on projection with cosine compression: $X_{\text{warped}} = X_{\text{hinge}} - d \cdot \cos(\theta) \cdot S$.
-   - **Original-UV Gradient Mapping**: Ensures the non-folding panel remains 100% sharp and bright without color void artifacts or horizontal streaking.
+3. **2D AGSL Vector-Driven 3D Ray-Plane Projection Shader (`ShaderCode.kt`)**
+   - **Vector-Driven Surface Projection**: Replaces scalar horizontal approximations with full 3D ray-plane intersection math ($\vec{R}(t) = \vec{O} + t\vec{D}$) against dynamically rotated panel surface normals ($\vec{N}$).
+   - **True 3D Perspective & Depth**: Computes exact camera-to-surface ray intersections using panel basis vectors ($\vec{U}, \vec{V}$), delivering authentic foreshortening, angular perspective distortion, and real-time surface normal lighting/shading across the fold crease.
+   - **Original-UV Gradient Mapping**: Maps intersected 3D coordinates directly back into canonical UV space, ensuring the non-folding panel remains 100% sharp and bright without color void artifacts or horizontal streaking.
 
 4. **Dual-Resolution 25-Tap Progressive Blur**
    - Scaled 5×5 weighted Gaussian kernel with downscaled texture sampling, delivering smooth optical blur matching high-order mip-chain lookups.
@@ -66,6 +53,10 @@ Don't have a foldable nearby? Scrub through the fold transition in your browser 
    - Built-in **Demo Mode** toggles continuous cosine fold cycles for demonstration and screen recordings.
    - Integrated settings directly in the system live wallpaper previewer via `android:settingsActivity`.
 
+8. **Automatic Sunrise/Sunset Wallpaper Scheduler (`SolarScheduleManager.kt`)**
+   - **Dynamic Solar Calculation**: Computes exact local sunrise and sunset times using device coordinates or manual timezone fallback without requiring continuous background GPS polling.
+   - **Automated Day/Night Wallpaper Swapping**: Uses `AlarmManager` and `WorkManager` to trigger seamless transitions between user-selected Day and Night wallpapers across both the inner and cover displays.
+   - **Shader Crossfade Blending**: Feeds a normalized transition uniform into `ShaderCode.kt` to smoothly dissolve between day and night textures during twilight windows.
 ---
 
 ## ⚖️ Legal Disclaimer
